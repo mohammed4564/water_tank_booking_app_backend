@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from models import Tanker, Driver
+from models import Tanker
 from helper.db import db
 from flask_jwt_extended import jwt_required
 from helper.jwt_handler import get_current_user_id

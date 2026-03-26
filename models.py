@@ -80,6 +80,35 @@ class Driver(db.Model):
     TotalTrips = db.Column(db.Integer, default=0)
     CreatedAt = db.Column(db.DateTime, default=datetime.utcnow)
 
+
+class Tanker(db.Model):
+    __tablename__ = 'Tankers'
+
+    Id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+
+    DriverId = db.Column(
+        db.Integer,
+        db.ForeignKey('Drivers.Id', ondelete='CASCADE'),
+        nullable=False
+    )
+
+    CapacityLiters = db.Column(db.Integer, nullable=False)
+
+    WaterType = db.Column(db.String(50), nullable=True)
+
+    PricePerTrip = db.Column(db.Numeric(10, 2), nullable=False)
+
+    IsAvailable = db.Column(db.Boolean, default=True)
+
+    CreatedAt = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relationship
+    driver = db.relationship(
+        'Driver',
+        backref=db.backref('tankers', passive_deletes=True),
+        lazy=True
+    )
+
 class Booking(db.Model):
     __tablename__ = 'Bookings'
 
