@@ -15,7 +15,7 @@ from routes.payment import payment_bp
 from routes.water_price import water_price_bp
 from routes.bill import bill_bp
 from routes.driver_subscription import driver_sub_bp
-from routes.subscription_payment import payment_bp
+from routes.subscription_payment import driver_payment_bp
 from routes.water_source_subscription import water_source_sub_bp
 
 
@@ -44,7 +44,7 @@ app.register_blueprint(payment_bp, url_prefix='/api/payment')
 app.register_blueprint(water_price_bp, url_prefix='/api/water-price')
 app.register_blueprint(bill_bp, url_prefix='/api/bill')
 app.register_blueprint(driver_sub_bp, url_prefix='/api/driver-subscription')
-app.register_blueprint(payment_bp, url_prefix='/api/subscription-payment')
+app.register_blueprint(driver_payment_bp, url_prefix='/api/subscription-payment')
 app.register_blueprint(water_source_sub_bp, url_prefix='/api/water-source-subscription')
 
 if __name__ == '__main__':

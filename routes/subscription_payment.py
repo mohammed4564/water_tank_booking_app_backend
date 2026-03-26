@@ -4,11 +4,11 @@ from models import SubscriptionPayment, DriverSubscription
 from datetime import datetime
 from flask_jwt_extended import jwt_required
 
-payment_bp = Blueprint('payment_bp', __name__)
+driver_payment_bp = Blueprint('driver_payment_bp', __name__)
 
 #Add Payment API
 
-@payment_bp.route('/add-payment', methods=['POST'])
+@driver_payment_bp.route('/add-payment', methods=['POST'])
 @jwt_required()
 def add_payment():
     try:
@@ -42,7 +42,7 @@ def add_payment():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 #Get All Payments
-@payment_bp.route('/payments', methods=['GET'])
+@driver_payment_bp.route('/payments', methods=['GET'])
 def get_payments():
     try:
         payments = SubscriptionPayment.query.all()
@@ -66,7 +66,7 @@ def get_payments():
         return jsonify({"error": str(e)}), 500
     
 #Get Payments by Subscription
-@payment_bp.route('/payments/<int:subscription_id>', methods=['GET'])
+@driver_payment_bp.route('/payments/<int:subscription_id>', methods=['GET'])
 def get_payments_by_subscription(subscription_id):
     try:
         payments = SubscriptionPayment.query.filter_by(SubscriptionId=subscription_id).all()
@@ -87,7 +87,7 @@ def get_payments_by_subscription(subscription_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 #Update Payment Status
-@payment_bp.route('/update-payment/<int:payment_id>', methods=['PUT'])
+@driver_payment_bp.route('/update-payment/<int:payment_id>', methods=['PUT'])
 @jwt_required()
 def update_payment(payment_id):
     try:
@@ -109,7 +109,7 @@ def update_payment(payment_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 #Delete Payment
-@payment_bp.route('/delete-payment/<int:payment_id>', methods=['DELETE'])
+@driver_payment_bp.route('/delete-payment/<int:payment_id>', methods=['DELETE'])
 @jwt_required()
 def delete_payment(payment_id):
     try:
