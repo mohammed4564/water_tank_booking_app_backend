@@ -17,6 +17,8 @@ from routes.bill import bill_bp
 from routes.driver_subscription import driver_sub_bp
 from routes.subscription_payment import driver_payment_bp
 from routes.water_source_subscription import water_source_sub_bp
+from routes.subscription_plan import plan_bp
+
 
 
 app = Flask(__name__)
@@ -43,6 +45,7 @@ app.register_blueprint(driver_location_bp, url_prefix='/api/driver-location')
 app.register_blueprint(payment_bp, url_prefix='/api/payment')
 app.register_blueprint(water_price_bp, url_prefix='/api/water-price')
 app.register_blueprint(bill_bp, url_prefix='/api/bill')
+app.register_blueprint(plan_bp, url_prefix='/api/plans')
 app.register_blueprint(driver_sub_bp, url_prefix='/api/driver-subscription')
 app.register_blueprint(driver_payment_bp, url_prefix='/api/subscription-payment')
 app.register_blueprint(water_source_sub_bp, url_prefix='/api/water-source-subscription')

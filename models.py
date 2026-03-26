@@ -231,6 +231,23 @@ class SubscriptionPayment(db.Model):
         backref=db.backref('payments', passive_deletes=True),
         lazy=True
     )
+    
+class SubscriptionPlan(db.Model):
+    __tablename__ = 'SubscriptionPlans'
+
+    Id = db.Column(db.Integer, primary_key=True)
+
+    PlanName = db.Column(db.String(100), nullable=False)
+    Price = db.Column(db.Numeric(10, 2), nullable=False)
+
+    Features = db.Column(db.Text)  # can store JSON or text
+
+    DurationDays = db.Column(db.Integer, nullable=False)
+
+    IsActive = db.Column(db.Boolean, default=True)
+
+    CreatedAt = db.Column(db.DateTime, default=datetime.utcnow)
+
 
 class DriverSubscription(db.Model):
     __tablename__ = 'DriverSubscriptions'
