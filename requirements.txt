@@ -1,0 +1,9 @@
+Flask
+Flask-SQLAlchemy
+Flask-JWT-Extended
+pyodbc
+python-dotenv
+bcrypt
+flask_cors
+requests
+sib_api_v3_sdk
