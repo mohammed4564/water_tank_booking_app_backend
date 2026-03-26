@@ -202,6 +202,36 @@ class Bill(db.Model):
     CreatedAt = db.Column(db.DateTime, default=datetime.utcnow)
     UpdatedAt = db.Column(db.DateTime, onupdate=datetime.utcnow)
 
+class SubscriptionPayment(db.Model):
+    __tablename__ = 'SubscriptionPayments'
+
+    Id = db.Column(db.Integer, primary_key=True)
+
+    SubscriptionId = db.Column(
+        db.Integer,
+        db.ForeignKey('DriverSubscriptions.Id', ondelete='CASCADE'),
+        nullable=False
+    )
+
+    Amount = db.Column(db.Numeric(10, 2), nullable=False)
+
+    PaymentMethod = db.Column(db.String(50), nullable=False)  # UPI, Card, Cash
+
+    PaymentStatus = db.Column(db.String(20), default='Pending')  # Pending, Paid, Failed
+
+    TransactionId = db.Column(db.String(100))
+
+    PaidAt = db.Column(db.DateTime)
+
+    CreatedAt = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relationship
+    subscription = db.relationship(
+        'DriverSubscription',
+        backref=db.backref('payments', passive_deletes=True),
+        lazy=True
+    )
+
 class DriverSubscription(db.Model):
     __tablename__ = 'DriverSubscriptions'
 

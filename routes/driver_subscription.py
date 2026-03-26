@@ -64,6 +64,7 @@ def list_subscriptions():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
 #Check Driver Subscription Status api
 @driver_sub_bp.route('/status/<int:driver_id>', methods=['GET'])
 @jwt_required()

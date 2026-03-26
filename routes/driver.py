@@ -13,7 +13,7 @@ driver_bp = Blueprint('driver_bp', __name__)
 def add_driver():
     try:
         data = request.json
-        user_id = data.get('user_id')
+        user_id = get_current_user_id()
 
         if not user_id or not data.get('license_number') or not data.get('vehicle_number'):
             return jsonify({"error": "Missing required fields"}), 400
