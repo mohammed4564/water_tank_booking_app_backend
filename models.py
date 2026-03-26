@@ -75,15 +75,18 @@ class Driver(db.Model):
     VehicleNumber = db.Column(db.String(20))
 
 
-class Tanker(db.Model):
-    __tablename__ = 'Tankers'
+class Driver(db.Model):
+    __tablename__ = 'Drivers'
 
     Id = db.Column(db.Integer, primary_key=True)
-    DriverId = db.Column(db.Integer, db.ForeignKey('Drivers.Id'))
-    CapacityLiters = db.Column(db.Integer)
-    WaterType = db.Column(db.String(50))
-    PricePerTrip = db.Column(db.Float)
-
+    UserId = db.Column(db.Integer, db.ForeignKey('users.id'))
+    LicenseNumber = db.Column(db.String)
+    VehicleNumber = db.Column(db.String)
+    VehicleType = db.Column(db.String(50))  # ✅ NEW
+    IsVerified = db.Column(db.Boolean, default=False)
+    Rating = db.Column(db.Float, default=0)
+    TotalTrips = db.Column(db.Integer, default=0)
+    CreatedAt = db.Column(db.DateTime, default=datetime.utcnow)
 
 class Booking(db.Model):
     __tablename__ = 'Bookings'
