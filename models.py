@@ -66,14 +66,6 @@ class Address(db.Model):
     Longitude = db.Column(db.Float)
     CreatedAt = db.Column(db.DateTime, default=datetime.utcnow)  # ✅ add here
 
-class Driver(db.Model):
-    __tablename__ = 'Drivers'
-
-    Id = db.Column(db.Integer, primary_key=True)
-    UserId = db.Column(db.Integer, db.ForeignKey('Users.Id'))
-    LicenseNumber = db.Column(db.String(50))
-    VehicleNumber = db.Column(db.String(20))
-
 
 class Driver(db.Model):
     __tablename__ = 'Drivers'
