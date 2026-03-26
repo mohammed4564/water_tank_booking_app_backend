@@ -66,7 +66,6 @@ class Address(db.Model):
     Longitude = db.Column(db.Float)
     CreatedAt = db.Column(db.DateTime, default=datetime.utcnow)  # ✅ add here
 
-
 class Driver(db.Model):
     __tablename__ = 'Drivers'
 
@@ -74,10 +73,11 @@ class Driver(db.Model):
     UserId = db.Column(db.Integer, db.ForeignKey('users.id'))
     LicenseNumber = db.Column(db.String)
     VehicleNumber = db.Column(db.String)
-    VehicleType = db.Column(db.String(50))  # ✅ NEW
+    VehicleType = db.Column(db.String(50))
     IsVerified = db.Column(db.Boolean, default=False)
     Rating = db.Column(db.Float, default=0)
     TotalTrips = db.Column(db.Integer, default=0)
+    Status = db.Column(db.String(20), default='Active')  # ✅ NEW
     CreatedAt = db.Column(db.DateTime, default=datetime.utcnow)
 
 
@@ -231,7 +231,7 @@ class SubscriptionPayment(db.Model):
         backref=db.backref('payments', passive_deletes=True),
         lazy=True
     )
-    
+
 class SubscriptionPlan(db.Model):
     __tablename__ = 'SubscriptionPlans'
 
