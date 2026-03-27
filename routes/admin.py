@@ -16,10 +16,18 @@ def get_full_driver_details():
     try:
         current_user_id = get_jwt_identity()
 
-        # 🔐 Admin check
-        admin_role = UserRole.query.filter_by(UserId=current_user_id).first()
+        from models import Role  # roles table
 
-        if not admin_role or admin_role.role_id != 1:
+        # 🔐 Get Admin role dynamically
+        admin_role_data = Role.query.filter_by(name='Admin').first()
+
+        if not admin_role_data:
+            return jsonify({"error": "Admin role not found"}), 500
+
+        # 🔐 Check current user role
+        admin_role = UserRole.query.filter_by(user_id=current_user_id).first()
+
+        if not admin_role or admin_role.RoleId != admin_role_data.id:
             return jsonify({"error": "Admin only"}), 403
 
         users = User.query.all()
@@ -96,6 +104,7 @@ def get_full_driver_details():
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
+    
 # UPDATED APPROVE API for driver 
 @admin_bp.route('/approve-driver-full/<int:user_id>', methods=['PUT'])
 @jwt_required()
@@ -103,9 +112,18 @@ def approve_driver_full(user_id):
     try:
         current_user_id = get_jwt_identity()
 
+        from models import Role
+
+        # 🔐 Get roles dynamically
+        admin_role_data = Role.query.filter_by(name='Admin').first()
+        driver_role_data = Role.query.filter_by(name='Driver').first()
+
+        if not admin_role_data or not driver_role_data:
+            return jsonify({"error": "Roles not configured"}), 500
+
         # 🔐 Admin check
         admin_role = UserRole.query.filter_by(user_id=current_user_id).first()
-        if not admin_role or admin_role.role_id != 1:
+        if not admin_role or admin_role.RoleId != admin_role_data.id:
             return jsonify({"error": "Admin only"}), 403
 
         # 🔑 USER ROLE
@@ -114,7 +132,7 @@ def approve_driver_full(user_id):
             return jsonify({"error": "User role not found"}), 404
 
         user_role.status = 'Approved'
-        user_role.role_id = 2  # Driver role
+        user_role.RoleId = driver_role_data.id
 
         # 🚗 DRIVER
         driver = Driver.query.filter_by(UserId=user_id).first()
@@ -126,7 +144,7 @@ def approve_driver_full(user_id):
                 IsVerified=True
             )
             db.session.add(driver)
-            db.session.flush()  # get driver.Id
+            db.session.flush()
         else:
             driver.Status = 'Active'
             driver.IsVerified = True
@@ -157,6 +175,7 @@ def approve_driver_full(user_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
+
 #WHEN ADMIN REJECTS api
 @admin_bp.route('/reject-driver-full/<int:user_id>', methods=['PUT'])
 @jwt_required()
@@ -164,39 +183,56 @@ def reject_driver_full(user_id):
     try:
         current_user_id = get_jwt_identity()
 
+        from models import Role
+
+        # 🔐 Get roles dynamically
+        admin_role_data = Role.query.filter_by(name='Admin').first()
+        user_role_data = Role.query.filter_by(name='User').first()
+
+        if not admin_role_data or not user_role_data:
+            return jsonify({"error": "Roles not configured"}), 500
+
+        # 🔐 Admin check
         admin_role = UserRole.query.filter_by(user_id=current_user_id).first()
-        if not admin_role or admin_role.role_id != 1:
+        if not admin_role or admin_role.RoleId != admin_role_data.id:
             return jsonify({"error": "Admin only"}), 403
 
+        # 🔑 USER ROLE
         user_role = UserRole.query.filter_by(user_id=user_id).first()
         if not user_role:
             return jsonify({"error": "User role not found"}), 404
 
         user_role.status = 'Rejected'
-        user_role.role_id = 3  # back to normal user
+        user_role.RoleId = user_role_data.id
 
+        # 🚗 DRIVER
         driver = Driver.query.filter_by(UserId=user_id).first()
+
         if driver:
             driver.Status = 'Inactive'
             driver.IsVerified = False
 
-        subscriptions = DriverSubscription.query.filter_by(
-            DriverId=driver.Id
-        ).all() if driver else []
-
-        for sub in subscriptions:
-            sub.Status = 'Rejected'
-
-            payments = SubscriptionPayment.query.filter_by(
-                SubscriptionId=sub.Id
+            # 📦 SUBSCRIPTIONS
+            subscriptions = DriverSubscription.query.filter_by(
+                DriverId=driver.Id
             ).all()
 
-            for pay in payments:
-                pay.VerifyStatus = 'Rejected'
+            for sub in subscriptions:
+                sub.Status = 'Rejected'
+
+                # 💳 PAYMENTS
+                payments = SubscriptionPayment.query.filter_by(
+                    SubscriptionId=sub.Id
+                ).all()
+
+                for pay in payments:
+                    pay.VerifyStatus = 'Rejected'
 
         db.session.commit()
 
-        return jsonify({"message": "Driver rejected successfully"})
+        return jsonify({
+            "message": "Driver rejected successfully"
+        })
 
     except Exception as e:
         db.session.rollback()
