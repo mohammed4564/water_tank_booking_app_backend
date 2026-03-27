@@ -201,6 +201,7 @@ class Bill(db.Model):
     BillData = db.Column(db.Text, nullable=False)  # JSON string
     CreatedAt = db.Column(db.DateTime, default=datetime.utcnow)
     UpdatedAt = db.Column(db.DateTime, onupdate=datetime.utcnow)
+    
 class SubscriptionPayment(db.Model):
     __tablename__ = 'SubscriptionPayments'
 
@@ -223,6 +224,8 @@ class SubscriptionPayment(db.Model):
     PaidAt = db.Column(db.DateTime)
 
     CreatedAt = db.Column(db.DateTime, default=datetime.utcnow)
+
+    VerifyStatus = db.Column(db.String(20), default='Pending')  
 
     # 🔗 Relationship (clean naming)
     subscription = db.relationship(

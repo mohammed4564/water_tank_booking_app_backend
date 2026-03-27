@@ -7,6 +7,7 @@ from flask_jwt_extended import jwt_required
 driver_payment_bp = Blueprint('driver_payment_bp', __name__)
 
 #Add Payment API
+
 @driver_payment_bp.route('/add-payment', methods=['POST'])
 @jwt_required()
 def add_payment():
@@ -40,29 +41,30 @@ def add_payment():
         if subscription.EndDate < datetime.utcnow():
             return jsonify({"error": "Subscription expired. Create new subscription"}), 400
 
-        # ✅ Create payment
+        # ✅ Create payment (Pending verification)
         payment = SubscriptionPayment(
             SubscriptionId=subscription_id,
             Amount=subscription.Amount,
             PaymentMethod=payment_method,
             PaymentStatus='Paid',
+            VerifyStatus='Pending',  # 🔥 important
             TransactionId=data.get('transaction_id'),
             PaidAt=datetime.utcnow()
         )
 
-        # ✅ Activate subscription
-        subscription.Status = 'Active'
+        # ❌ DO NOT ACTIVATE HERE
+        # subscription.Status = 'Active'  ← REMOVE THIS
 
         db.session.add(payment)
         db.session.commit()
 
         return jsonify({
-            "message": "Payment successful, subscription activated",
+            "message": "Payment submitted. Waiting for admin verification.",
             "payment_id": payment.Id
         }), 201
 
     except Exception as e:
-        db.session.rollback()  # 🔥 important
+        db.session.rollback()
         return jsonify({"error": str(e)}), 500
     
 #Get All Payments
@@ -110,6 +112,7 @@ def get_payments_by_subscription(subscription_id):
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
 #Update Payment Status
 @driver_payment_bp.route('/update-payment/<int:payment_id>', methods=['PUT'])
 @jwt_required()
@@ -139,6 +142,53 @@ def update_payment(payment_id):
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+#Admin Verify Payment API
+from flask_jwt_extended import jwt_required, get_jwt_identity
+
+@driver_payment_bp.route('/verify-payment/<int:payment_id>', methods=['PUT'])
+@jwt_required()
+def verify_payment(payment_id):
+    try:
+        from models import User
+
+        user_id = get_jwt_identity()
+        user = User.query.get(user_id)
+
+        # 🔐 Only Admin allowed
+        if user.Role != 'Admin':
+            return jsonify({"error": "Admin only"}), 403
+
+        payment = SubscriptionPayment.query.get(payment_id)
+        if not payment:
+            return jsonify({"error": "Payment not found"}), 404
+
+        data = request.json
+        verify_status = data.get('verify_status')  # Approved / Rejected
+
+        if verify_status not in ['Approved', 'Rejected']:
+            return jsonify({"error": "Invalid status"}), 400
+
+        payment.VerifyStatus = verify_status
+
+        # ✅ If approved → activate subscription
+        if verify_status == 'Approved':
+            payment.subscription.Status = 'Active'
+
+        # ❌ If rejected → keep pending or mark failed
+        elif verify_status == 'Rejected':
+            payment.subscription.Status = 'Pending'
+
+        db.session.commit()
+
+        return jsonify({
+            "message": f"Payment {verify_status} successfully"
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+    
 #Delete Payment
 @driver_payment_bp.route('/delete-payment/<int:payment_id>', methods=['DELETE'])
 @jwt_required()
