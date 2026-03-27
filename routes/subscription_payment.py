@@ -23,6 +23,24 @@ def add_payment():
         if not subscription:
             return jsonify({"error": "Subscription not found"}), 404
 
+        # ❌ Prevent double payment
+        existing_payment = SubscriptionPayment.query.filter_by(
+            SubscriptionId=subscription_id,
+            PaymentStatus='Paid'
+        ).first()
+
+        if existing_payment:
+            return jsonify({"error": "Subscription already paid"}), 400
+
+        # ❌ Prevent paying active subscription again
+        if subscription.Status == 'Active':
+            return jsonify({"error": "Subscription already active"}), 400
+
+        # ❌ Prevent paying expired subscription
+        if subscription.EndDate < datetime.utcnow():
+            return jsonify({"error": "Subscription expired. Create new subscription"}), 400
+
+        # ✅ Create payment
         payment = SubscriptionPayment(
             SubscriptionId=subscription_id,
             Amount=subscription.Amount,
@@ -32,7 +50,7 @@ def add_payment():
             PaidAt=datetime.utcnow()
         )
 
-        # 🔥 Activate subscription
+        # ✅ Activate subscription
         subscription.Status = 'Active'
 
         db.session.add(payment)
@@ -44,6 +62,7 @@ def add_payment():
         }), 201
 
     except Exception as e:
+        db.session.rollback()  # 🔥 important
         return jsonify({"error": str(e)}), 500
     
 #Get All Payments
