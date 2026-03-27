@@ -17,7 +17,7 @@ def get_full_driver_details():
         current_user_id = get_jwt_identity()
 
         # 🔐 Admin check
-        admin_role = UserRole.query.filter_by(user_id=current_user_id).first()
+        admin_role = UserRole.query.filter_by(UserId=current_user_id).first()
 
         if not admin_role or admin_role.role_id != 1:
             return jsonify({"error": "Admin only"}), 403
