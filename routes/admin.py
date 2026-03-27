@@ -16,29 +16,26 @@ def get_full_driver_details():
     try:
         current_user_id = get_jwt_identity()
 
-        from models import Role  # roles table
+        from models import Role
 
-        # 🔐 Get Admin role dynamically
-        admin_role_data = Role.query.filter_by(name='Admin').first()
+        # ✅ FIXED HERE
+        admin_role_data = Role.query.filter_by(Name='Admin').first()
 
         if not admin_role_data:
             return jsonify({"error": "Admin role not found"}), 500
 
-        # 🔐 Check current user role
-        admin_role = UserRole.query.filter_by(user_id=current_user_id).first()
+        admin_role = UserRole.query.filter_by(UserId=current_user_id).first()
 
-        if not admin_role or admin_role.RoleId != admin_role_data.id:
+        if not admin_role or admin_role.RoleId != admin_role_data.Id:
             return jsonify({"error": "Admin only"}), 403
 
         users = User.query.all()
         result = []
 
         for user in users:
-            # 🔑 User Role
-            user_role = UserRole.query.filter_by(user_id=user.id).first()
+            user_role = UserRole.query.filter_by(UserId=user.Id).first()
 
-            # 🚗 Driver
-            driver = Driver.query.filter_by(UserId=user.id).first()
+            driver = Driver.query.filter_by(UserId=user.Id).first()
             driver_data = None
 
             if driver:
@@ -90,12 +87,12 @@ def get_full_driver_details():
                 }
 
             result.append({
-                "user_id": user.id,
-                "name": user.name,
-                "email": user.email,
-                "phone": user.phone,
-                "is_active": user.is_active,
-                "role_status": user_role.status if user_role else None,
+                "user_id": user.Id,
+                "name": user.Name,
+                "email": user.Email,
+                "phone": user.Phone,
+                "is_active": user.IsActive,
+                "role_status": user_role.Status if user_role else None,
                 "driver": driver_data
             })
 
@@ -104,8 +101,7 @@ def get_full_driver_details():
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
-    
-# UPDATED APPROVE API for driver 
+#APPROVE DRIVER API (FIXED)
 @admin_bp.route('/approve-driver-full/<int:user_id>', methods=['PUT'])
 @jwt_required()
 def approve_driver_full(user_id):
@@ -114,25 +110,25 @@ def approve_driver_full(user_id):
 
         from models import Role
 
-        # 🔐 Get roles dynamically
-        admin_role_data = Role.query.filter_by(name='Admin').first()
-        driver_role_data = Role.query.filter_by(name='Driver').first()
+        # ✅ FIXED (Name not name)
+        admin_role_data = Role.query.filter_by(Name='Admin').first()
+        driver_role_data = Role.query.filter_by(Name='Driver').first()
 
         if not admin_role_data or not driver_role_data:
             return jsonify({"error": "Roles not configured"}), 500
 
-        # 🔐 Admin check
-        admin_role = UserRole.query.filter_by(user_id=current_user_id).first()
-        if not admin_role or admin_role.RoleId != admin_role_data.id:
+        # ✅ FIXED (UserId + Id)
+        admin_role = UserRole.query.filter_by(UserId=current_user_id).first()
+        if not admin_role or admin_role.RoleId != admin_role_data.Id:
             return jsonify({"error": "Admin only"}), 403
 
-        # 🔑 USER ROLE
-        user_role = UserRole.query.filter_by(user_id=user_id).first()
+        # ✅ FIXED
+        user_role = UserRole.query.filter_by(UserId=user_id).first()
         if not user_role:
             return jsonify({"error": "User role not found"}), 404
 
-        user_role.status = 'Approved'
-        user_role.RoleId = driver_role_data.id
+        user_role.Status = 'Approved'
+        user_role.RoleId = driver_role_data.Id
 
         # 🚗 DRIVER
         driver = Driver.query.filter_by(UserId=user_id).first()
@@ -175,8 +171,7 @@ def approve_driver_full(user_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
-
-#WHEN ADMIN REJECTS api
+#REJECT DRIVER API (FIXED)
 @admin_bp.route('/reject-driver-full/<int:user_id>', methods=['PUT'])
 @jwt_required()
 def reject_driver_full(user_id):
@@ -185,25 +180,25 @@ def reject_driver_full(user_id):
 
         from models import Role
 
-        # 🔐 Get roles dynamically
-        admin_role_data = Role.query.filter_by(name='Admin').first()
-        user_role_data = Role.query.filter_by(name='User').first()
+        # ✅ FIXED
+        admin_role_data = Role.query.filter_by(Name='Admin').first()
+        user_role_data = Role.query.filter_by(Name='User').first()
 
         if not admin_role_data or not user_role_data:
             return jsonify({"error": "Roles not configured"}), 500
 
-        # 🔐 Admin check
-        admin_role = UserRole.query.filter_by(user_id=current_user_id).first()
-        if not admin_role or admin_role.RoleId != admin_role_data.id:
+        # ✅ FIXED
+        admin_role = UserRole.query.filter_by(UserId=current_user_id).first()
+        if not admin_role or admin_role.RoleId != admin_role_data.Id:
             return jsonify({"error": "Admin only"}), 403
 
-        # 🔑 USER ROLE
-        user_role = UserRole.query.filter_by(user_id=user_id).first()
+        # ✅ FIXED
+        user_role = UserRole.query.filter_by(UserId=user_id).first()
         if not user_role:
             return jsonify({"error": "User role not found"}), 404
 
-        user_role.status = 'Rejected'
-        user_role.RoleId = user_role_data.id
+        user_role.Status = 'Rejected'
+        user_role.RoleId = user_role_data.Id
 
         # 🚗 DRIVER
         driver = Driver.query.filter_by(UserId=user_id).first()
@@ -227,6 +222,7 @@ def reject_driver_full(user_id):
 
                 for pay in payments:
                     pay.VerifyStatus = 'Rejected'
+                    pay.PaymentStatus = 'Failed'  # ✅ optional but better
 
         db.session.commit()
 
