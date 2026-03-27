@@ -3,6 +3,7 @@ from flask_jwt_extended import jwt_required
 from models import DriverSubscription, Driver, User
 from helper.db import db
 from datetime import datetime,timedelta
+from helper.jwt_handler import get_jwt_identity
 
 driver_sub_bp = Blueprint('driver_sub_bp', __name__)
 
@@ -13,24 +14,38 @@ def add_driver_subscription():
     try:
         data = request.json
 
-        driver_id = data.get('driver_id')
-        plan_id = data.get('plan_id')
+        # ✅ Get user from JWT
+        user_id = get_jwt_identity()
 
-        if not driver_id or not plan_id:
-            return jsonify({"error": "driver_id and plan_id are required"}), 400
-
-        # Check driver
-        driver = Driver.query.get(driver_id)
+        # ✅ Convert User → Driver
+        driver = Driver.query.filter_by(UserId=user_id).first()
         if not driver:
             return jsonify({"error": "Driver not found"}), 404
 
-        # Check plan
+        driver_id = driver.Id
+        plan_id = data.get('plan_id')
+
+        if not plan_id:
+            return jsonify({"error": "plan_id is required"}), 400
+
+        # ✅ Check plan
         from models import SubscriptionPlan
         plan = SubscriptionPlan.query.get(plan_id)
         if not plan or not plan.IsActive:
             return jsonify({"error": "Invalid or inactive plan"}), 400
 
-        # Create subscription (Pending)
+        # ❌ Prevent multiple active subscriptions
+        existing = DriverSubscription.query.filter_by(
+            DriverId=driver_id,
+            Status='Active'
+        ).first()
+
+        if existing:
+            return jsonify({
+                "error": "You already have an active subscription"
+            }), 400
+
+        # ✅ Create subscription (Pending)
         subscription = DriverSubscription(
             DriverId=driver_id,
             PlanId=plan.Id,
@@ -49,6 +64,7 @@ def add_driver_subscription():
         }), 201
 
     except Exception as e:
+        db.session.rollback()  # 🔥 important
         return jsonify({"error": str(e)}), 500
     
 #List All Subscriptions
