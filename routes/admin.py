@@ -18,7 +18,6 @@ def get_full_driver_details():
 
         from models import Role
 
-        # ✅ FIXED HERE
         admin_role_data = Role.query.filter_by(Name='Admin').first()
 
         if not admin_role_data:
@@ -29,71 +28,88 @@ def get_full_driver_details():
         if not admin_role or admin_role.RoleId != admin_role_data.Id:
             return jsonify({"error": "Admin only"}), 403
 
-        users = User.query.all()
         result = []
 
-        for user in users:
+        # ✅ ONLY USERS WHO ARE DRIVERS
+        drivers = Driver.query.all()
+
+        for driver in drivers:
+
+            user = User.query.get(driver.UserId)
+            if not user:
+                continue
+
             user_role = UserRole.query.filter_by(UserId=user.Id).first()
 
-            driver = Driver.query.filter_by(UserId=user.Id).first()
-            driver_data = None
+            subscriptions = DriverSubscription.query.filter_by(
+                DriverId=driver.Id
+            ).all()
 
-            if driver:
-                subscriptions = DriverSubscription.query.filter_by(
-                    DriverId=driver.Id
+            # ❌ SKIP IF NO SUBSCRIPTION
+            if not subscriptions:
+                continue
+
+            subs_list = []
+
+            for sub in subscriptions:
+
+                payments = SubscriptionPayment.query.filter_by(
+                    SubscriptionId=sub.Id
                 ).all()
 
-                subs_list = []
+                # ❌ IMPORTANT: ONLY INCLUDE PAID USERS
+                if not payments:
+                    continue
 
-                for sub in subscriptions:
-                    plan = SubscriptionPlan.query.get(sub.PlanId)
+                plan = SubscriptionPlan.query.get(sub.PlanId)
 
-                    payments = SubscriptionPayment.query.filter_by(
-                        SubscriptionId=sub.Id
-                    ).all()
-
-                    payment_list = []
-
-                    for pay in payments:
-                        payment_list.append({
-                            "payment_id": pay.Id,
-                            "amount": float(pay.Amount),
-                            "payment_method": pay.PaymentMethod,
-                            "payment_status": pay.PaymentStatus,
-                            "verify_status": pay.VerifyStatus,
-                            "transaction_id": pay.TransactionId,
-                            "paid_at": pay.PaidAt
-                        })
-
-                    subs_list.append({
-                        "subscription_id": sub.Id,
-                        "status": sub.Status,
-                        "start_date": sub.StartDate,
-                        "end_date": sub.EndDate,
-                        "plan": {
-                            "plan_id": plan.Id if plan else None,
-                            "plan_name": plan.PlanName if plan else None,
-                            "price": float(plan.Price) if plan else None
-                        },
-                        "payments": payment_list
+                payment_list = []
+                for pay in payments:
+                    payment_list.append({
+                        "payment_id": pay.Id,
+                        "amount": float(pay.Amount),
+                        "payment_method": pay.PaymentMethod,
+                        "payment_status": pay.PaymentStatus,
+                        "verify_status": pay.VerifyStatus,
+                        "transaction_id": pay.TransactionId,
+                        "paid_at": pay.PaidAt
                     })
 
-                driver_data = {
+                subs_list.append({
+                    "subscription_id": sub.Id,
+                    "status": sub.Status,
+                    "start_date": sub.StartDate,
+                    "end_date": sub.EndDate,
+                    "plan": {
+                        "plan_id": plan.Id if plan else None,
+                        "plan_name": plan.PlanName if plan else None,
+                        "price": float(plan.Price) if plan else None
+                    },
+                    "payments": payment_list
+                })
+
+            # ❌ SKIP IF NO VALID PAYMENT SUBSCRIPTION
+            if not subs_list:
+                continue
+
+            result.append({
+                "user": {
+                    "user_id": user.Id,
+                    "name": user.Name,
+                    "email": user.Email,
+                    "phone": user.Phone,
+                    "is_active": user.IsActive,
+                    "role_status": user_role.Status if user_role else None
+                },
+                "driver": {
                     "driver_id": driver.Id,
                     "license_number": driver.LicenseNumber,
                     "vehicle_number": driver.VehicleNumber,
                     "vehicle_type": driver.VehicleType,
-                    "subscriptions": subs_list
-                }
-
-            result.append({
-                "user_id": user.Id,
-                "name": user.Name,
-                "email": user.Email,
-                "phone": user.Phone,
-                "is_active": user.IsActive,
-                "role_status": user_role.Status if user_role else None,
-                "driver": driver_data
+                    "is_verified": driver.IsVerified,
+                    "status": driver.Status
+                },
+                "subscriptions": subs_list
             })
 
         return jsonify(result)
@@ -101,7 +117,10 @@ def get_full_driver_details():
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
-#APPROVE DRIVER API (FIXED)
+    
+
+
+#APPROVE DRIVER API (FINAL FIX)
 @admin_bp.route('/approve-driver-full/<int:user_id>', methods=['PUT'])
 @jwt_required()
 def approve_driver_full(user_id):
@@ -110,19 +129,19 @@ def approve_driver_full(user_id):
 
         from models import Role
 
-        # ✅ FIXED (Name not name)
+        # 🔐 Roles
         admin_role_data = Role.query.filter_by(Name='Admin').first()
         driver_role_data = Role.query.filter_by(Name='Driver').first()
 
         if not admin_role_data or not driver_role_data:
             return jsonify({"error": "Roles not configured"}), 500
 
-        # ✅ FIXED (UserId + Id)
+        # 🔐 Admin check
         admin_role = UserRole.query.filter_by(UserId=current_user_id).first()
         if not admin_role or admin_role.RoleId != admin_role_data.Id:
             return jsonify({"error": "Admin only"}), 403
 
-        # ✅ FIXED
+        # 🔑 User role
         user_role = UserRole.query.filter_by(UserId=user_id).first()
         if not user_role:
             return jsonify({"error": "User role not found"}), 404
@@ -130,7 +149,7 @@ def approve_driver_full(user_id):
         user_role.Status = 'Approved'
         user_role.RoleId = driver_role_data.Id
 
-        # 🚗 DRIVER
+        # 🚗 Driver
         driver = Driver.query.filter_by(UserId=user_id).first()
 
         if not driver:
@@ -145,15 +164,14 @@ def approve_driver_full(user_id):
             driver.Status = 'Active'
             driver.IsVerified = True
 
-        # 📦 SUBSCRIPTIONS
+        # 📦 Subscriptions (SAFE CHECK)
         subscriptions = DriverSubscription.query.filter_by(
             DriverId=driver.Id
-        ).all()
+        ).all() if driver else []
 
         for sub in subscriptions:
             sub.Status = 'Active'
 
-            # 💳 PAYMENTS
             payments = SubscriptionPayment.query.filter_by(
                 SubscriptionId=sub.Id
             ).all()
@@ -165,13 +183,14 @@ def approve_driver_full(user_id):
         db.session.commit()
 
         return jsonify({
-            "message": "Driver fully approved and all statuses updated"
+            "message": "Driver fully approved successfully"
         })
 
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
-#REJECT DRIVER API (FIXED)
+ 
+#REJECT DRIVER API (FINAL FIX)
 @admin_bp.route('/reject-driver-full/<int:user_id>', methods=['PUT'])
 @jwt_required()
 def reject_driver_full(user_id):
@@ -180,19 +199,19 @@ def reject_driver_full(user_id):
 
         from models import Role
 
-        # ✅ FIXED
+        # 🔐 Roles
         admin_role_data = Role.query.filter_by(Name='Admin').first()
         user_role_data = Role.query.filter_by(Name='User').first()
 
         if not admin_role_data or not user_role_data:
             return jsonify({"error": "Roles not configured"}), 500
 
-        # ✅ FIXED
+        # 🔐 Admin check
         admin_role = UserRole.query.filter_by(UserId=current_user_id).first()
         if not admin_role or admin_role.RoleId != admin_role_data.Id:
             return jsonify({"error": "Admin only"}), 403
 
-        # ✅ FIXED
+        # 🔑 User role
         user_role = UserRole.query.filter_by(UserId=user_id).first()
         if not user_role:
             return jsonify({"error": "User role not found"}), 404
@@ -200,14 +219,14 @@ def reject_driver_full(user_id):
         user_role.Status = 'Rejected'
         user_role.RoleId = user_role_data.Id
 
-        # 🚗 DRIVER
+        # 🚗 Driver
         driver = Driver.query.filter_by(UserId=user_id).first()
 
         if driver:
             driver.Status = 'Inactive'
             driver.IsVerified = False
 
-            # 📦 SUBSCRIPTIONS
+            # 📦 Subscriptions
             subscriptions = DriverSubscription.query.filter_by(
                 DriverId=driver.Id
             ).all()
@@ -215,14 +234,14 @@ def reject_driver_full(user_id):
             for sub in subscriptions:
                 sub.Status = 'Rejected'
 
-                # 💳 PAYMENTS
+                # 💳 Payments
                 payments = SubscriptionPayment.query.filter_by(
                     SubscriptionId=sub.Id
                 ).all()
 
                 for pay in payments:
                     pay.VerifyStatus = 'Rejected'
-                    pay.PaymentStatus = 'Failed'  # ✅ optional but better
+                    pay.PaymentStatus = 'Failed'
 
         db.session.commit()
 
