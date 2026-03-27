@@ -18,6 +18,7 @@ from routes.driver_subscription import driver_sub_bp
 from routes.subscription_payment import driver_payment_bp
 from routes.water_source_subscription import water_source_sub_bp
 from routes.subscription_plan import plan_bp
+from routes.admin import admin_bp
 
 
 
@@ -49,6 +50,7 @@ app.register_blueprint(plan_bp, url_prefix='/api/plans')
 app.register_blueprint(driver_sub_bp, url_prefix='/api/driver-subscription')
 app.register_blueprint(driver_payment_bp, url_prefix='/api/subscription-payment')
 app.register_blueprint(water_source_sub_bp, url_prefix='/api/water-source-subscription')
+app.register_blueprint(admin_bp, url_prefix='/api/admin')
 
 if __name__ == '__main__':
     app.run(debug=True,host='0.0.0.0',port=5000)
