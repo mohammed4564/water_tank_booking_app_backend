@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from helper.db import db
 from models import SubscriptionPlan
 from flask_jwt_extended import jwt_required
+from flask_jwt_extended import get_jwt_identity
 import json
 
 plan_bp = Blueprint('plan_bp', __name__)
@@ -13,14 +14,29 @@ def add_plan():
     try:
         data = request.json
 
-        if not data.get('plan_name') or not data.get('price') or not data.get('duration_days'):
+        plan_name = data.get('plan_name')
+        price = data.get('price')
+        duration = data.get('duration_days')
+        features = data.get('features', [])
+
+        # ✅ Validation
+        if not plan_name or not price or not duration:
             return jsonify({"error": "Missing required fields"}), 400
 
+        if float(price) <= 0:
+            return jsonify({"error": "Price must be greater than 0"}), 400
+
+        # ✅ Duplicate check
+        existing = SubscriptionPlan.query.filter_by(PlanName=plan_name).first()
+        if existing:
+            return jsonify({"error": "Plan already exists"}), 400
+
         plan = SubscriptionPlan(
-            PlanName=data.get('plan_name'),
-            Price=data.get('price'),
-            DurationDays=data.get('duration_days'),
-            Features=json.dumps(data.get('features')) if data.get('features') else None
+            PlanName=plan_name,
+            Price=price,
+            DurationDays=duration,
+            Features=json.dumps(features),
+            IsActive=True
         )
 
         db.session.add(plan)
@@ -33,25 +49,21 @@ def add_plan():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
 #Get All Plans
-
 @plan_bp.route('/plans', methods=['GET'])
 def get_plans():
     try:
         plans = SubscriptionPlan.query.filter_by(IsActive=True).all()
-        result = []
 
-        for p in plans:
-            result.append({
-                "id": p.Id,
-                "plan_name": p.PlanName,
-                "price": float(p.Price),
-                "duration_days": p.DurationDays,
-                "features": json.loads(p.Features) if p.Features else [],
-                "is_active": p.IsActive
-            })
-
-        return jsonify(result)
+        return jsonify([{
+            "id": p.Id,
+            "plan_name": p.PlanName,
+            "price": float(p.Price),
+            "duration_days": p.DurationDays,
+            "features": json.loads(p.Features) if p.Features else [],
+            "created_at": p.CreatedAt
+        } for p in plans])
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -84,14 +96,22 @@ def update_plan(plan_id):
 
         data = request.json
 
-        plan.PlanName = data.get('plan_name', plan.PlanName)
-        plan.Price = data.get('price', plan.Price)
-        plan.DurationDays = data.get('duration_days', plan.DurationDays)
+        if 'plan_name' in data and data['plan_name']:
+            plan.PlanName = data['plan_name']
 
-        if data.get('features'):
-            plan.Features = json.dumps(data.get('features'))
+        if 'price' in data:
+            if float(data['price']) <= 0:
+                return jsonify({"error": "Invalid price"}), 400
+            plan.Price = data['price']
 
-        plan.IsActive = data.get('is_active', plan.IsActive)
+        if 'duration_days' in data:
+            plan.DurationDays = data['duration_days']
+
+        if 'features' in data:
+            plan.Features = json.dumps(data['features'])
+
+        if 'is_active' in data:
+            plan.IsActive = data['is_active']
 
         db.session.commit()
 
@@ -99,6 +119,7 @@ def update_plan(plan_id):
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
 #Delete Plan (Soft Delete Recommended)
 @plan_bp.route('/delete-plan/<int:plan_id>', methods=['DELETE'])
 @jwt_required()

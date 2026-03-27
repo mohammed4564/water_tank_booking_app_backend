@@ -7,40 +7,45 @@ from flask_jwt_extended import jwt_required
 driver_payment_bp = Blueprint('driver_payment_bp', __name__)
 
 #Add Payment API
-
 @driver_payment_bp.route('/add-payment', methods=['POST'])
 @jwt_required()
 def add_payment():
     try:
         data = request.json
 
-        if not data.get('subscription_id') or not data.get('amount') or not data.get('payment_method'):
+        subscription_id = data.get('subscription_id')
+        payment_method = data.get('payment_method')
+
+        if not subscription_id or not payment_method:
             return jsonify({"error": "Missing required fields"}), 400
 
-        # Check subscription exists
-        subscription = DriverSubscription.query.get(data.get('subscription_id'))
+        subscription = DriverSubscription.query.get(subscription_id)
         if not subscription:
             return jsonify({"error": "Subscription not found"}), 404
 
         payment = SubscriptionPayment(
-            SubscriptionId=data.get('subscription_id'),
-            Amount=data.get('amount'),
-            PaymentMethod=data.get('payment_method'),
-            PaymentStatus=data.get('payment_status', 'Pending'),
+            SubscriptionId=subscription_id,
+            Amount=subscription.Amount,
+            PaymentMethod=payment_method,
+            PaymentStatus='Paid',
             TransactionId=data.get('transaction_id'),
-            PaidAt=datetime.utcnow() if data.get('payment_status') == 'Paid' else None
+            PaidAt=datetime.utcnow()
         )
+
+        # 🔥 Activate subscription
+        subscription.Status = 'Active'
 
         db.session.add(payment)
         db.session.commit()
 
         return jsonify({
-            "message": "Payment added successfully",
+            "message": "Payment successful, subscription activated",
             "payment_id": payment.Id
         }), 201
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
 #Get All Payments
 @driver_payment_bp.route('/payments', methods=['GET'])
 def get_payments():
@@ -96,11 +101,18 @@ def update_payment(payment_id):
             return jsonify({"error": "Payment not found"}), 404
 
         data = request.json
+        status = data.get('payment_status')
 
-        payment.PaymentStatus = data.get('payment_status', payment.PaymentStatus)
+        if status:
+            payment.PaymentStatus = status
 
-        if data.get('payment_status') == 'Paid':
-            payment.PaidAt = datetime.utcnow()
+            # 🔥 Sync subscription
+            if status == 'Paid':
+                payment.PaidAt = datetime.utcnow()
+                payment.subscription.Status = 'Active'
+
+            elif status == 'Failed':
+                payment.subscription.Status = 'Pending'
 
         db.session.commit()
 

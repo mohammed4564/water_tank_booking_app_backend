@@ -26,7 +26,7 @@ def send_email_verification(user):
     ))
     db.session.commit()
 
-    verify_link = f"http://192.168.3.217:5000/api/users/verify-email?token={token}"
+    verify_link = f"http://10.130.29.151:5000/api/users/verify-email?token={token}"
     send_email(
         user.Email,
         "Email Verification",

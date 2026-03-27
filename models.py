@@ -201,7 +201,6 @@ class Bill(db.Model):
     BillData = db.Column(db.Text, nullable=False)  # JSON string
     CreatedAt = db.Column(db.DateTime, default=datetime.utcnow)
     UpdatedAt = db.Column(db.DateTime, onupdate=datetime.utcnow)
-
 class SubscriptionPayment(db.Model):
     __tablename__ = 'SubscriptionPayments'
 
@@ -215,9 +214,9 @@ class SubscriptionPayment(db.Model):
 
     Amount = db.Column(db.Numeric(10, 2), nullable=False)
 
-    PaymentMethod = db.Column(db.String(50), nullable=False)  # UPI, Card, Cash
+    PaymentMethod = db.Column(db.String(50), nullable=False)
 
-    PaymentStatus = db.Column(db.String(20), default='Pending')  # Pending, Paid, Failed
+    PaymentStatus = db.Column(db.String(20), default='Pending')
 
     TransactionId = db.Column(db.String(100))
 
@@ -225,13 +224,12 @@ class SubscriptionPayment(db.Model):
 
     CreatedAt = db.Column(db.DateTime, default=datetime.utcnow)
 
-    # Relationship
+    # 🔗 Relationship (clean naming)
     subscription = db.relationship(
         'DriverSubscription',
-        backref=db.backref('payments', passive_deletes=True),
+        backref=db.backref('payment_records', lazy=True),
         lazy=True
     )
-
 class SubscriptionPlan(db.Model):
     __tablename__ = 'SubscriptionPlans'
 
@@ -239,27 +237,50 @@ class SubscriptionPlan(db.Model):
 
     PlanName = db.Column(db.String(100), nullable=False)
     Price = db.Column(db.Numeric(10, 2), nullable=False)
-
-    Features = db.Column(db.Text)  # can store JSON or text
-
+    Features = db.Column(db.Text)
     DurationDays = db.Column(db.Integer, nullable=False)
-
     IsActive = db.Column(db.Boolean, default=True)
 
     CreatedAt = db.Column(db.DateTime, default=datetime.utcnow)
 
+    # 🔗 Relationship
+    subscriptions = db.relationship('DriverSubscription', backref='plan', lazy=True)
 
 class DriverSubscription(db.Model):
     __tablename__ = 'DriverSubscriptions'
 
     Id = db.Column(db.Integer, primary_key=True)
-    DriverId = db.Column(db.Integer, db.ForeignKey('Drivers.Id'), nullable=False)
-    Amount = db.Column(db.Float, nullable=False)
+
+    DriverId = db.Column(
+        db.Integer,
+        db.ForeignKey('Drivers.Id'),
+        nullable=False
+    )
+
+    # 🔥 NEW (VERY IMPORTANT)
+    PlanId = db.Column(
+        db.Integer,
+        db.ForeignKey('SubscriptionPlans.Id'),
+        nullable=False
+    )
+
+    Amount = db.Column(db.Numeric(10, 2), nullable=False)
+
     StartDate = db.Column(db.DateTime, nullable=False)
     EndDate = db.Column(db.DateTime, nullable=False)
-    Status = db.Column(db.String(20), default='active')  # active / expired
+
+    Status = db.Column(db.String(20), default='Pending')  # Pending, Active, Expired
+
     CreatedAt = db.Column(db.DateTime, default=datetime.utcnow)
     UpdatedAt = db.Column(db.DateTime, onupdate=datetime.utcnow)
+
+    # 🔗 Relationship
+    payments = db.relationship(
+        'SubscriptionPayment',
+        backref='driver_subscription',
+        cascade='all, delete',
+        passive_deletes=True
+    )
 
 class WaterSourceSubscription(db.Model):
     __tablename__ = 'WaterSourceSubscriptions'
